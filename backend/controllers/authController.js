@@ -569,22 +569,21 @@ exports.getSessionSummary = async (req, res) => {
       SELECT 
         module_id,
         assignment_id,
+        DATE(start_time) AS session_date,
         SUM(duration) AS total_duration
       FROM timer
       WHERE user_id = $1
     `;
     const params = [user_id];
 
-    // Optional filter by start_time (in 'YYYY-MM-DD' format)
     if (start_time) {
-      query += ` AND date::date >= $2::date`;
+      query += ` AND DATE(start_time) >= $2::date`;
       params.push(start_time);
     }
-    
 
     query += `
-      GROUP BY module_id, assignment_id
-      ORDER BY module_id;
+      GROUP BY module_id, assignment_id, session_date
+      ORDER BY session_date DESC, module_id;
     `;
 
     const { rows } = await db.query(query, params);
@@ -599,6 +598,7 @@ exports.getSessionSummary = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
 
 
 
