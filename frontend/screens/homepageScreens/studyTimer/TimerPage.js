@@ -267,48 +267,44 @@ export default function TimerPage({ navigation }) {
   
 
   const handleStartPress = (moduleCode, taskName = null) => {
-    console.log(modules)
-    // Determine what timer we're dealing with
     const timerType = !moduleCode ? 'main' : taskName ? 'task' : 'module';
-    
-    // Check if this is the currently active timer
+  
     const isActiveTimer = (
       (timerType === 'main' && activeTimer?.type === 'main') ||
       (timerType === 'module' && activeTimer?.type === 'module' && activeTimer.moduleCode === moduleCode) ||
       (timerType === 'task' && activeTimer?.type === 'task' && activeTimer.moduleCode === moduleCode && activeTimer.taskName === taskName)
     );
-    
+  
     if (isActiveTimer) {
-      // Stop the current timer
       setIsRunning(false);
-
-      // log the session time before clearing
-      if (activeTimer?.type === 'module' || activeTimer?.type === 'task') {
-        const now = Date.now();
-        const moduleTime = modules.find(m => m.code === activeTimer.moduleCode)?.time || 0;
-        const taskTime = activeTimer.type === 'task'
-          ? taskTimes[`${activeTimer.moduleCode}-${activeTimer.taskName}`] || 0
-          : null;
-
-        const duration = activeTimer.type === 'task' ? taskTime : moduleTime;
-        logStudySession(duration, activeTimer.moduleCode, activeTimer.taskName);
+  
+      const now = Date.now();
+  
+      // ✅ Log session before clearing
+      if (sessionStartTime && (activeTimer?.type === 'module' || activeTimer?.type === 'task')) {
+        const sessionDuration = Math.floor((now - sessionStartTime) / 1000); // seconds
+  
+        logStudySession(sessionDuration, activeTimer.moduleCode, activeTimer.taskName);
+        
       }
-
+  
       setActiveTimer(null);
-
       return;
     }
-    
-    // Start new timer
+  
+    // ⏱️ Start new timer
     setIsRunning(true);
+    setSessionStartTime(Date.now());
+  
     if (timerType === 'task') {
-      setActiveTimer({type: 'task', moduleCode, taskName});
+      setActiveTimer({ type: 'task', moduleCode, taskName });
     } else if (timerType === 'module') {
-      setActiveTimer({type: 'module', moduleCode});
+      setActiveTimer({ type: 'module', moduleCode });
     } else {
-      setActiveTimer({type: 'main'});
+      setActiveTimer({ type: 'main' });
     }
   };
+  
 
   const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600);

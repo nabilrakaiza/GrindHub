@@ -1,4 +1,4 @@
-import React, {useContext, useMemo} from 'react';
+import React, {useContext, useMemo, useState, useEffect} from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GrindHubFooter from '../components/GrindHubFooter';
@@ -29,7 +29,38 @@ export default function SelectingModule({ navigation }) {
   // Derive userid and username from the decoded token
   const userid = decodedToken?.userid;
 
-  const modules = ['ST2131','CS1231','DSA1101','DSA2102','DSA3101','DSA4288M','CS2040','CS3230'];
+  const [modules, setModules] = useState([]);
+
+useEffect(() => {
+  const fetchModules = async () => {
+    try {
+      const response = await fetch('https://grindhub-production.up.railway.app/api/auth/getAllUserModules', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userid }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success || !Array.isArray(data.modules)) {
+        throw new Error(data.message || "Unexpected response");
+      }
+
+      // Use the array of strings directly
+      setModules(data.modules);
+    } catch (error) {
+      console.error("Failed to fetch modules:", error.message);
+    }
+  };
+
+  if (userid) fetchModules();
+}, [userid]);
+
+
+  
+  
 
   return (
     <SafeAreaView style={styles.container}>

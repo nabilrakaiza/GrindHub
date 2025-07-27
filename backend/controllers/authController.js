@@ -558,25 +558,35 @@ exports.addSession = async (req, res) => {
 };
 
 exports.getSessionSummary = async (req, res) => {
-  const { user_id } = req.body;
+  const { user_id, start_time } = req.body;
 
   if (!user_id) {
     return res.status(400).json({ success: false, message: 'Missing user_id' });
   }
 
   try {
-    const query = `
+    let query = `
       SELECT 
         module_id,
         assignment_id,
         SUM(duration) AS total_duration
       FROM timer
       WHERE user_id = $1
+    `;
+    const params = [user_id];
+
+    // Optional filter by start_time (in 'YYYY-MM-DD' format)
+    if (start_time) {
+      query += ` AND date >= $2`;
+      params.push(start_time);
+    }
+
+    query += `
       GROUP BY module_id, assignment_id
       ORDER BY module_id;
     `;
 
-    const { rows } = await db.query(query, [user_id]);
+    const { rows } = await db.query(query, params);
 
     return res.status(200).json({
       success: true,
@@ -588,6 +598,7 @@ exports.getSessionSummary = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
 
 
 
