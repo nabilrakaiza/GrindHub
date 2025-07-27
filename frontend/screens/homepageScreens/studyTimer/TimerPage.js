@@ -9,6 +9,53 @@ import GrindHubFooter from '../components/GrindHubFooter';
 import GrindHubHeader from '../components/GrindHubHeader';
 
 export default function TimerPage({ navigation }) {
+  const MyComponent = () => {
+    // ✅ Use hooks here, inside the function component
+    const { userToken, signOut } = useContext(AuthContext);
+  
+    const decodedToken = useMemo(() => {
+      if (userToken) {
+        try {
+          return jwtDecode(userToken);
+        } catch (e) {
+          console.error("Failed to decode token:", e);
+          signOut();
+          return null;
+        }
+      }
+      return null;
+    }, [userToken, signOut]);
+  
+    const userid = decodedToken?.userid;
+  
+    useEffect(() => {
+      if (!userid) return;
+  
+      // Your API call using userid
+      const fetchSession = async () => {
+        try {
+          const res = await fetch('https://grindhub-production.up.railway.app/api/auth/getSessionSummary', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: userid }),
+          });
+          const data = await res.json();
+          console.log("Session summary:", data);
+        } catch (err) {
+          console.error("Error fetching session:", err);
+        }
+      };
+  
+      fetchSession();
+    }, [userid]);
+  
+    return (
+      <View>
+        <Text>Hello from MyComponent</Text>
+      </View>
+    );
+  };
+
   const { userToken, signOut } = useContext(AuthContext);
   // Decode token to get userid
   const decodedToken = useMemo(() => {
@@ -33,6 +80,8 @@ export default function TimerPage({ navigation }) {
   const [activeTimer, setActiveTimer] = useState(null);
   const [moduleTimes, setModuleTimes] = useState({});
   const [taskTimes, setTaskTimes] = useState({});
+  const [sessionStartTime, setSessionStartTime] = useState(null);
+
 
   const [modules, setModules] = useState([]);
 
@@ -101,8 +150,43 @@ export default function TimerPage({ navigation }) {
     }
   }, [userid]);
   
+  const [sessionSummary, setSessionSummary] = useState([]);
+
+  const fetchSessionSummary = async () => {
+    try {
+      const res = await fetch('https://grindhub-production.up.railway.app/api/auth/getSessionSummary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userid }),
+      });
+  
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+  
+      // Build a map of module durations
+      const summaryMap = {};
+      for (const row of data.summary) {
+        const key = row.module_id;
+        summaryMap[key] = (summaryMap[key] || 0) + parseInt(row.total_duration);
+      }
+  
+      // Update state
+      setModules(prev =>
+        prev.map(mod => ({
+          ...mod,
+          time: summaryMap[mod.code] || 0,
+        }))
+      );
+      setSessionSummary(data.summary);
+    } catch (error) {
+      console.error('Error fetching session summary:', error);
+    }
+  };
   
 
+  useEffect(() => {
+    fetchSessionSummary(); // fetch durations from backend on mount
+  }, []);
   
 
   // Calculate total time from all modules
@@ -142,14 +226,48 @@ export default function TimerPage({ navigation }) {
     return () => clearInterval(interval);
   }, [isRunning, activeTimer]);
 
+  const logStudySession = async (duration, moduleId, assignmentId = null) => {
+    try {
+      const now = new Date();
+      const start_time = new Date(now.getTime() - duration * 1000).toISOString(); // assume session just ended
+      const end_time = now.toISOString();
+
+      console.log("📦 Sending session payload:", {
+        user_id: userid,
+        module_id: moduleId,
+        assignment_id: assignmentId,
+        start_time,
+        end_time,
+        duration,
+      });
+  
+      const res = await fetch('https://grindhub-production.up.railway.app/api/auth/addSession', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userid,                // 🔁 updated field name
+          module_id: moduleId,           // 🔁 updated field name
+          assignment_id: assignmentId,   // 🔁 updated field name
+          start_time,
+          end_time,
+          duration,
+        }),
+      });
+  
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      console.log("✅ Session logged successfully:", data);
+      fetchSessionSummary(); // Refresh durations after logging
+
+    } catch (err) {
+      console.error("❌ Error logging session:", err.message);
+    }
+  };
+  
+  
+
   const handleStartPress = (moduleCode, taskName = null) => {
-
-    const modules = getModules(userid)
-
-    console.log("hihi")
     console.log(modules)
-    console.log("haha")
-
     // Determine what timer we're dealing with
     const timerType = !moduleCode ? 'main' : taskName ? 'task' : 'module';
     
@@ -163,7 +281,21 @@ export default function TimerPage({ navigation }) {
     if (isActiveTimer) {
       // Stop the current timer
       setIsRunning(false);
+
+      // log the session time before clearing
+      if (activeTimer?.type === 'module' || activeTimer?.type === 'task') {
+        const now = Date.now();
+        const moduleTime = modules.find(m => m.code === activeTimer.moduleCode)?.time || 0;
+        const taskTime = activeTimer.type === 'task'
+          ? taskTimes[`${activeTimer.moduleCode}-${activeTimer.taskName}`] || 0
+          : null;
+
+        const duration = activeTimer.type === 'task' ? taskTime : moduleTime;
+        logStudySession(duration, activeTimer.moduleCode, activeTimer.taskName);
+      }
+
       setActiveTimer(null);
+
       return;
     }
     

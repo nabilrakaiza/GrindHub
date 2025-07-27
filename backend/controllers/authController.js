@@ -502,27 +502,60 @@ exports.addSession = async (req, res) => {
   }
 
   try {
-    const query = `
-      INSERT INTO timer (user_id, module_id, assignment_id, start_time, end_time, duration)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING *;
+    // Extract only the date part for comparison
+    const sessionDate = new Date(start_time).toISOString().split('T')[0];
+
+    // Check if a session for the same user, module, assignment, and day already exists
+    const checkQuery = `
+      SELECT * FROM timer
+      WHERE user_id = $1
+        AND module_id = $2
+        AND (assignment_id = $3 OR ($3 IS NULL AND assignment_id IS NULL))
+        AND DATE(start_time) = $4
+      LIMIT 1;
     `;
 
-    const values = [user_id, module_id, assignment_id || null, start_time, end_time, duration];
+    const checkValues = [user_id, module_id, assignment_id || null, sessionDate];
+    const existing = await db.query(checkQuery, checkValues);
 
-    const { rows } = await db.query(query, values);
+    if (existing.rows.length > 0) {
+      // Update the existing session's duration and end_time
+      const updateQuery = `
+        UPDATE timer
+        SET duration = duration + $1,
+            end_time = $2
+        WHERE id = $3
+        RETURNING *;
+      `;
+      const updateValues = [duration, end_time, existing.rows[0].id];
+      const updated = await db.query(updateQuery, updateValues);
 
-    return res.status(201).json({
-      success: true,
-      message: 'Timer session added successfully!',
-      session: rows[0],
-    });
+      return res.status(200).json({
+        success: true,
+        message: 'Session updated successfully!',
+        session: updated.rows[0],
+      });
+    } else {
+      // Insert a new session
+      const insertQuery = `
+        INSERT INTO timer (user_id, module_id, assignment_id, start_time, end_time, duration)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *;
+      `;
+      const insertValues = [user_id, module_id, assignment_id || null, start_time, end_time, duration];
+      const inserted = await db.query(insertQuery, insertValues);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Timer session added successfully!',
+        session: inserted.rows[0],
+      });
+    }
   } catch (error) {
-    console.error('Error adding timer session:', error);
+    console.error('Error adding/updating timer session:', error);
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
 
 exports.getSessionSummary = async (req, res) => {
   const { user_id } = req.body;
