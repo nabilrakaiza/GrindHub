@@ -577,9 +577,10 @@ exports.getSessionSummary = async (req, res) => {
 
     // Optional filter by start_time (in 'YYYY-MM-DD' format)
     if (start_time) {
-      query += ` AND date >= $2`;
+      query += ` AND date::date >= $2::date`;
       params.push(start_time);
     }
+    
 
     query += `
       GROUP BY module_id, assignment_id
