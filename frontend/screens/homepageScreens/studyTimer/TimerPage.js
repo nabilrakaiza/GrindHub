@@ -37,38 +37,72 @@ export default function TimerPage({ navigation }) {
   const [modules, setModules] = useState([]);
 
   useEffect(() => {
-    const fetchModules = async () => {
+    const fetchModulesAndAssignments = async () => {
       try {
-        const response = await fetch('https://grindhub-production.up.railway.app/api/auth/getAllUserModules', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ userid }),
+        const [moduleRes, assignmentRes] = await Promise.all([
+          fetch('https://grindhub-production.up.railway.app/api/auth/getModule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userid }),
+          }),
+          fetch('https://grindhub-production.up.railway.app/api/auth/getAssignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userid }),
+          }),
+        ]);
+  
+        if (!moduleRes.ok || !assignmentRes.ok) {
+          console.error('❌ Error with response:', moduleRes.status, assignmentRes.status);
+          return;
+        }
+  
+        const moduleData = await moduleRes.json();
+        const assignmentData = await assignmentRes.json();
+  
+        if (!moduleData.success || !assignmentData.success) {
+          console.error('❌ Failed response:', moduleData.message, assignmentData.message);
+          return;
+        }
+  
+        // Build a map from moduleCode to object
+        const moduleMap = {};
+        moduleData.modules.forEach((mod) => {
+          moduleMap[mod.modulename] = {
+            code: mod.modulename,
+            time: 0,
+            tasks: [],
+          };
         });
   
-        const data = await response.json();
+        // Fill the tasks from assignments
+        assignmentData.assignments.forEach((assign) => {
+          const modCode = assign.assignmentmodule;
+          if (!moduleMap[modCode]) {
+            // In case module doesn't exist from module table
+            moduleMap[modCode] = {
+              code: modCode,
+              time: 0,
+              tasks: [],
+            };
+          }
+          moduleMap[modCode].tasks.push(assign.assignmentname);
+        });
   
-        if (data.success) {
-          // Siapkan data sesuai struktur yang digunakan UI
-          const loadedModules = data.modules.map(mod => ({
-            code: mod,
-            time: 0,
-            tasks: [], // default kosong, bisa diubah kalau ambil dari backend juga
-          }));
-          setModules(loadedModules);
-        } else {
-          console.error('Failed to load modules:', data.message);
-        }
+        const modules = Object.values(moduleMap);
+        setModules(modules);
       } catch (err) {
-        console.error('Error fetching modules:', err);
+        console.error('❌ Error fetching modules or assignments:', err);
       }
     };
   
     if (userid) {
-      fetchModules();
+      fetchModulesAndAssignments();
     }
   }, [userid]);
+  
+  
+
   
 
   // Calculate total time from all modules

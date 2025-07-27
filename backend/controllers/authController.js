@@ -493,3 +493,68 @@ exports.getAllUserModules = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
+
+exports.addSession = async (req, res) => {
+  const { user_id, module_id, assignment_id, start_time, end_time, duration } = req.body;
+
+  if (!user_id || !module_id || !start_time || !end_time || !duration) {
+    return res.status(400).json({ success: false, message: 'Missing required fields' });
+  }
+
+  try {
+    const query = `
+      INSERT INTO timer (user_id, module_id, assignment_id, start_time, end_time, duration)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *;
+    `;
+
+    const values = [user_id, module_id, assignment_id || null, start_time, end_time, duration];
+
+    const { rows } = await db.query(query, values);
+
+    return res.status(201).json({
+      success: true,
+      message: 'Timer session added successfully!',
+      session: rows[0],
+    });
+  } catch (error) {
+    console.error('Error adding timer session:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+
+exports.getSessionSummary = async (req, res) => {
+  const { user_id } = req.body;
+
+  if (!user_id) {
+    return res.status(400).json({ success: false, message: 'Missing user_id' });
+  }
+
+  try {
+    const query = `
+      SELECT 
+        module_id,
+        assignment_id,
+        SUM(duration) AS total_duration
+      FROM timer
+      WHERE user_id = $1
+      GROUP BY module_id, assignment_id
+      ORDER BY module_id;
+    `;
+
+    const { rows } = await db.query(query, [user_id]);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Session summary fetched successfully!',
+      summary: rows,
+    });
+  } catch (error) {
+    console.error('Error fetching session summary:', error);
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+
+
