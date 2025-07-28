@@ -35,7 +35,6 @@ router.post('/getGroupMemberClassTime', getGroupMemberClassTime)
 router.post('/getAllUserModules', getAllUserModules)
 router.post('/addSession', addSession)
 router.post('/getSessionSummary', getSessionSummary)
-router.post('/getSessionSummary', getGroupStudySummaryToday)
 
 
 
