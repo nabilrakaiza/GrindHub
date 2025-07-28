@@ -197,7 +197,7 @@ const UserProfile = ({navigation}) => {
           <Text style={styles.username}>{user ? user.username : ''}</Text>
         </View>
 
-        <View style={styles.card}>
+        {/* <View style={styles.card}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
@@ -208,9 +208,9 @@ const UserProfile = ({navigation}) => {
               <Ionicons name={item.icon} size={20} color="#666" />
             </TouchableOpacity>
           ))}
-        </View>
+        </View> */}
 
-        <View style={styles.card}>
+        {/* <View style={styles.card}>
           {notificationItems.map((item, index) => (
             <View
               key={index}
@@ -223,7 +223,7 @@ const UserProfile = ({navigation}) => {
               />
             </View>
           ))}
-        </View>
+        </View> */}
 
         <TouchableOpacity style={styles.signOutCard} activeOpacity={0.7} onPress={handleSignOut}>
           <Text style={styles.signOutText}>Sign Out</Text>

@@ -5,7 +5,8 @@ const { signup, login, getAssignments,
     getDescription, updateUser, addMessage, 
     addGroups, joinGroup, setAssignment, 
     setClass, setModule, getModule, getAllLatestMessages, 
-    getGroupMemberClassTime,  getAllUserModules, addSession, getSessionSummary} = require('../controllers/authController');
+    getGroupMemberClassTime,  getAllUserModules, addSession, 
+    getSessionSummary, getGroupStudySummaryToday} = require('../controllers/authController');
 
 // , setAssignments,setClass,getClass,setModule,getModule,setChats,getChats,setGroups,getGroups,setUsers,getUsers
 router.post('/signup', signup);
@@ -34,6 +35,7 @@ router.post('/getGroupMemberClassTime', getGroupMemberClassTime)
 router.post('/getAllUserModules', getAllUserModules)
 router.post('/addSession', addSession)
 router.post('/getSessionSummary', getSessionSummary)
+router.post('/getSessionSummary', getGroupStudySummaryToday)
 
 
 

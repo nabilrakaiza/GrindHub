@@ -70,7 +70,7 @@ export default function HomePage({ navigation }) {
     return todayDate;
   });
 
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([{"message" : "Welcome to GrindHubChatbot! How can I assist you today?", "sender" : "Bot"}]);
   const [chatInput, setChatInput] = useState('');
   const chatScrollViewRef = useRef();
 

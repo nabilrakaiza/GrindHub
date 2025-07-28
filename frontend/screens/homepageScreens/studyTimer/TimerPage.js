@@ -153,39 +153,35 @@ export default function TimerPage({ navigation }) {
   const [sessionSummary, setSessionSummary] = useState([]);
 
   const fetchSessionSummary = async () => {
-  try {
-    // Get today's date in YYYY-MM-DD format
-    const today = new Date().toISOString().slice(0, 10); // 'YYYY-MM-DD'
-
-    const res = await fetch('https://grindhub-production.up.railway.app/api/auth/getSessionSummary', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: userid, start_time: today }),
-    });
-
-    const data = await res.json();
-    if (!data.success) throw new Error(data.message);
-
-    // Build a map of module durations for today
-    const summaryMap = {};
-    for (const row of data.summary) {
-      const key = row.module_id;
-      summaryMap[key] = (summaryMap[key] || 0) + parseInt(row.total_duration);
+    try {
+      const res = await fetch('https://grindhub-production.up.railway.app/api/auth/getSessionSummary', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userid }),
+      });
+  
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+  
+      // Build a map of module durations
+      const summaryMap = {};
+      for (const row of data.summary) {
+        const key = row.module_id;
+        summaryMap[key] = (summaryMap[key] || 0) + parseInt(row.total_duration);
+      }
+  
+      // Update state
+      setModules(prev =>
+        prev.map(mod => ({
+          ...mod,
+          time: summaryMap[mod.code] || 0,
+        }))
+      );
+      setSessionSummary(data.summary);
+    } catch (error) {
+      console.error('Error fetching session summary:', error);
     }
-
-    // Update state with today's time per module
-    setModules(prev =>
-      prev.map(mod => ({
-        ...mod,
-        time: summaryMap[mod.code] || 0,
-      }))
-    );
-    setSessionSummary(data.summary);
-  } catch (error) {
-    console.error('Error fetching session summary:', error);
-  }
-};
-
+  };
   
 
   useEffect(() => {
@@ -289,6 +285,7 @@ export default function TimerPage({ navigation }) {
         const sessionDuration = Math.floor((now - sessionStartTime) / 1000); // seconds
   
         logStudySession(sessionDuration, activeTimer.moduleCode, activeTimer.taskName);
+  
         
       }
   
